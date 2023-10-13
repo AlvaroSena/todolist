@@ -29,7 +29,7 @@ public class TaskController {
         }
 
         if (taskModel.getStartAt().isBefore(taskModel.getEndAt())) {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("A data de inicio deve ser menor que a data de término");
         }
 
@@ -47,11 +47,23 @@ public class TaskController {
     }
 
     @PutMapping("/{id}")
-    public TaskModel update(@RequestBody TaskModel taskModel, HttpServletRequest request, @PathVariable UUID id) {
+    public ResponseEntity update(@RequestBody TaskModel taskModel, HttpServletRequest request, @PathVariable UUID id) {
+        var userId = request.getAttribute("user_id");
         var task = this.taskRepository.findById(id).orElse(null);
 
-        Utils.copyNonNullProperties(taskModel, task);
+        if (task == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Task not found");
+        }
 
-        return this.taskRepository.save(task);
+        if (!task.getUserId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("User does not have permission to update this task");
+        }
+
+        Utils.copyNonNullProperties(taskModel, task);
+        var updatedTask = this.taskRepository.save(task);
+
+        return ResponseEntity.ok().body(updatedTask);
     }
 }
